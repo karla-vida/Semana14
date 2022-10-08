@@ -48,6 +48,14 @@ app.get('/solicitations', (request, response) => {
   response.json(solicitations)
 })
 
+app.get('/solicitations/:idPedido', (request, response) => {
+  const {idPedido} = request.params;
+
+  const solicitationsDetails = solicitations.find(solicitation => solicitation.id === idPedido)
+
+  return response.json(solicitationsDetails)
+
+})
 
 app.post('/solicitations', (request, response) => {
 
@@ -61,7 +69,7 @@ app.post('/solicitations', (request, response) => {
     pizzas
   } = request.body
 
-  const soliciation = {
+  const solicitation = {
     id: uuidv4(),
     name_client, 
     document_client,
@@ -73,9 +81,9 @@ app.post('/solicitations', (request, response) => {
     order: "EM PRODUÇÃO"
   }
 
-  solicitations.push(soliciation)
+  solicitations.push(solicitation)
 
-  response.status(201).json(soliciation)
+  response.status(201).json(solicitation)
 
 })
 
