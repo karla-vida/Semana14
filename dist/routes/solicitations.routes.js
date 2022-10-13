@@ -1,0 +1,10 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const express_1 = require("express");
+const solicitation_controller_1 = require("../api/controller/solicitation.controller");
+const solicitationsRoutes = (0, express_1.Router)();
+solicitationsRoutes.get("/solicitations", solicitation_controller_1.findAll);
+solicitationsRoutes.get("/solicitations/:idPedido", solicitation_controller_1.find);
+solicitationsRoutes.post("/solicitations", solicitation_controller_1.create);
+solicitationsRoutes.delete("/solicitations/:id", solicitation_controller_1.destroy);
+exports.default = solicitationsRoutes;
