@@ -1,56 +1,73 @@
 import { v4 as uuidv4 } from "uuid";
-import { createPizzaSchema } from "../../validations/createPizza.schema";
 import {Request, Response} from 'express';
-import { Pizza } from "../../types/pizza.types"
+import { Pizza, BodyParamsCreatePizza, QueryParamsFindMyPizzas, RouteParamsPizza, BodyUpdatePizza } from "../../types/pizza.types"
+import fs from 'fs';
+import { getPizzasInFile } from '../../utils/getPizzasFile'
+import { readFileJson } from '../../utils/readFileJson'
 
-let pizzas: Pizza[]= [];
+export function findMany(request: Request<{}, {}, {}, QueryParamsFindMyPizzas>, response: Response) {
+  const nameQuery = request.query.name || ""
+  
+  const pizzas: Pizza[] = readFileJson('pizzas.json')
 
-export function findAll(request: Request, response: Response) {
+  const pizzasFiltered = pizzas.filter(pizza => pizza.name.toLowerCase().includes(nameQuery.toLowerCase()))
 
-
-  const nameQuery = request.query.name || "";
-  const pizzasFiltered =  pizzas.filter((pizza) =>
-    pizza.name.toLowerCase().includes(nameQuery.toString().toLowerCase())
-  );
-  if (pizzasFiltered.length === 0) {
-    return response.status(401).json({ error: "Pizza não encontrada" });
-  }
-  response.status(200).json(pizzasFiltered);
+  response.json(pizzasFiltered)
 }
 
-export async function create(request: Request, response: Response) {
-  try {
-    await createPizzaSchema.validate(request.body);
 
-    const { name, description, price, url, ingredients } = request.body;
-    const pizzaExists = pizzas.find((pizza) => pizza.name === name);
-    if (pizzaExists) {
-      return response
-        .status(401)
-        .json({ error: "Pizza já encontra-se cadastrada" });
+export function create(request: Request<{}, {}, BodyParamsCreatePizza>, response: Response) {
+  
+  const { name, description, price, url, ingredients } = request.body
+
+  const pizzas: Pizza[] = getPizzasInFile()
+
+  const pizzaExists = pizzas.find(pizza => pizza.name === name)
+
+  if (pizzaExists) {
+    return response.status(401).json({ error: 'Pizza já encontra-se cadastrada' })
+  }
+
+  const pizza = {
+    id: uuidv4(),
+    name,
+    url,
+    description,
+    price,
+    ingredients
+  }
+
+  fs.writeFileSync('pizzas.json', JSON.stringify([...pizzas, pizza]))
+
+  response.status(201).json(pizza)
+}
+
+export function destroy(request: Request<RouteParamsPizza>, response: Response) {
+  const pizzasInFileJson: Pizza[] = getPizzasInFile()
+
+  const pizzas = pizzasInFileJson.filter(pizza => pizza.id !== request.params.id)
+
+  fs.writeFileSync('pizzas.json', JSON.stringify(pizzas))
+
+  response.json()
+}
+
+export function update(request: Request<RouteParamsPizza, {}, BodyUpdatePizza>, response: Response) {
+  const pizzasInFileJson: Pizza[] = getPizzasInFile()
+
+  const updatedPizzas= pizzasInFileJson.map(pizza => {
+    if (pizza.id === request.params.id) {
+      pizza.name = request.body.name || pizza.name
+      pizza.url = request.body.url || pizza.url
+      pizza.description = request.body.description || pizza.description
+      pizza.price = request.body.price || pizza.price
+      pizza.ingredients = request.body.ingredients || pizza.ingredients
     }
+    return pizza
+  })
 
-    const pizza = {
-      id: uuidv4(),
-      name,
-      url,
-      description,
-      price,
-      ingredients,
-    };
+  fs.writeFileSync('pizzas.json', JSON.stringify(updatedPizzas))
 
-    pizzas.push(pizza);
-    response.status(201).json(pizza);
-  } catch (error) {
-    response.status(400).json({ error: "Erro na criação" });
-  }
-}
+  return response.json()
 
-export function destroy(request: Request, response: Response) {
-  const pizzasFiltered = pizzas.filter(
-    (pizza) => pizza.id !== request.params.id
-  );
-  pizzas = [...pizzasFiltered];
-
-  return response.json();
 }

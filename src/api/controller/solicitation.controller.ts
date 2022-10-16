@@ -1,20 +1,22 @@
-import { Solicitation } from './../../types/solicitation.types';
+import { Solicitation, RouteParamsSolicitation, QueryParamsFindMySolicitations } from "./../../types/solicitation.types";
 import { v4 as uuidv4 } from "uuid";
-import {Request, Response} from 'express';
+import { Request, Response } from "express";
+import { readFileJson } from '../../utils/readFileJson'
+import { getSolicitationsInFile } from "../../utils/getSolicitations";
+import fs, { write } from 'fs'
 
-
-let solicitations: Solicitation[]= [];
-
-export function findAll(request: Request, response: Response) {
-  response.json(solicitations);
+export function findMany(request: Request<{}, {}, {}, QueryParamsFindMySolicitations>, response: Response) {
+  const solicitations = getSolicitationsInFile()
+  response.json(solicitations)
 }
 
 export function find(request: Request, response: Response) {
-  const { idPedido } = request.params;
-  const solicitationsDetails = solicitations.find(
-    (solicitation) => solicitation.id === idPedido
-  );
-  return response.json(solicitationsDetails);
+  const { id } = request.params
+  const solicitations: Solicitation[] = readFileJson('solicitations.json')
+
+  const solicitation = solicitations.find(solicitation => solicitation.id === id)
+
+  return response.json(solicitation)
 }
 
 export function create(request: Request, response: Response) {
@@ -26,9 +28,9 @@ export function create(request: Request, response: Response) {
     payment_method,
     observations,
     pizzas,
-  }  = request.body;
+  } = request.body;
 
-  const solicitation1 : Solicitation = {
+  const solicitation = {
     id: uuidv4(),
     name_client: request.body.name_client,
     document_client: request.body.document_client,
@@ -38,16 +40,54 @@ export function create(request: Request, response: Response) {
     observations: request.body.observations,
     pizzas: request.body.pizzas,
     order: "Em produção",
-  }
+  };
+  
+  const solicitations = getSolicitationsInFile()
 
-    solicitations = [...solicitations, solicitation1]
-    response.status(201).json(solicitation1)
+  fs.writeFileSync('solicitations.json', JSON.stringify([...solicitations, solicitation]))
+
+  response.status(201).json(solicitation)
 }
 
-export function destroy(request: Request, response: Response) {
-  const solicitationsFiltered = solicitations.filter(
-    (solicitation) => solicitation.id !== request.params.id
-  );
-  solicitations = [...solicitationsFiltered];
-  response.json();
+
+export function destroy(request: Request<RouteParamsSolicitation>, response: Response) {
+  const solicitationInFileJson: Solicitation[] = getSolicitationsInFile()
+
+  const solicitation = solicitationInFileJson.filter(solicitation => solicitation.id !== request.params.id)
+
+  fs.writeFileSync('solicitation.json', JSON.stringify(solicitation))
+
+  response.json()
+}
+
+export function updateStatus(request: Request, response: Response) {
+  const solicitations: Solicitation[] = getSolicitationsInFile()
+
+ const updatedSolicitations = solicitations.map(solicitation => {
+    if (solicitation.id === request.params.id) {
+      solicitation.order = 'A CAMINHO'
+    }
+    return solicitation
+  })
+
+  fs.writeFileSync('solicitations.json', JSON.stringify(updatedSolicitations))
+
+  return response.json()
+
+}
+
+export function updateStatusFinalizado(request: Request, response: Response) {
+  const solicitations: Solicitation[] = getSolicitationsInFile()
+
+ const updatedSolicitations = solicitations.map(solicitation => {
+    if (solicitation.id === request.params.id) {
+      solicitation.order = 'FINALIZADO'
+    }
+    return solicitation
+  })
+
+  fs.writeFileSync('solicitations.json', JSON.stringify(updatedSolicitations))
+
+  return response.json()
+
 }
